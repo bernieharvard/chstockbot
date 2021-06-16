@@ -48,20 +48,20 @@ a = ["spy","qqq","^spx"]
 b = [13,50,200]
 
 mesg = ""
-xyh_id = -1000xxx
+xyh_id = -1001484528239
 
 for j in a :
     df = web.DataReader(j,"yahoo",start=start,end=end )
     close = df.tail(1).iat[0,3]
     low = df.tail(1).iat[0,1]
     high = df.tail(1).iat[0,0]
-    print( f"""{j}价格: 收盘{close} (最低{low}-最高{high})""")# for test
-    mesg += f"""{j}价格: 收盘{close} (最低{low}-最高{high})"""
+    #print( f"{j}价格: 收盘{close:0.2f} (最低{low:0.2f}-最高{high:0.2f})")# for test
+    mesg += f"\n{j}价格: 收盘{close:0.2f} (最低{low:0.2f}-最高{high:0.2f})\n"
 
     for i in b :
     
-        print(f"{i} 周期均价：{df.tail(i)['Adj Close'].mean()}") # for test
-        mesg += f"{i} 周期均价：{df.tail(i)['Adj Close'].mean()}"
+        #print(f"{i} 周期均价：{df.tail(i)['Adj Close'].mean()}") # for test
+        mesg += f"{i} 周期均价：{df.tail(i)['Adj Close'].mean():0.2f}\n"
 """
 def thin(a):        
     return f"{a}"
