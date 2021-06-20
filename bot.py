@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from telegram.ext import Updater
 import mysystemd
 import os
@@ -44,35 +42,15 @@ if __name__ == '__main__':
     print(f"Starting... ID: {str(CONFIG['ID'])} , Username: {CONFIG['Username']}")
 
     commands = []
-    # 在这里加入功能
-    # from cmdproc import admincmd
-    # commands += admincmd.add_dispatcher(dispatcher)
-    #from cmdproc import echo
-    #commands += echo.add_dispatcher(dispatcher)
-    #from cmdproc import group
-    #commands += group.add_dispatcher(dispatcher)
-    #from cmdproc import groupcmd
-    #commands += groupcmd.add_dispatcher(dispatcher)
-    #from cmdproc import rewards
-    #commands += rewards.add_dispatcher(dispatcher)
-    #from cmdproc import reportcmd
-    #commands += reportcmd.add_dispatcher(dispatcher)
-    #from cmdproc import infocmd
-    #commands += infocmd.add_dispatcher(dispatcher)
-    #from cmdproc import reportjoecmd
-    #commands += reportjoecmd.add_dispatcher(dispatcher)
-    #from cmdproc import reportkickcmd
-    #commands += reportkickcmd.add_dispatcher(dispatcher)
-    #from cmdproc import reportcmd1
-    #commands += reportcmd1.add_dispatcher(dispatcher)
-    from cmdproc import sendxyh
-    commands += sendxyh.add_dispatcher(dispatcher)
+    from cmdproc import groupcmd
+    commands += groupcmd.add_dispatcher(dispatcher)
+    from cmdproc import reportcmd
+    commands += reportcmd.add_dispatcher(dispatcher)
 
     updater.bot.set_my_commands(commands)
 
     updater.start_polling()
     print('Started...')
-    
     mysystemd.ready()
 
     updater.idle()
