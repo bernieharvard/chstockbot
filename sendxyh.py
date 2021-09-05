@@ -1,40 +1,23 @@
 import getopt,sys,config,os
-import pandas_datareader.data as web
 import datetime
 from telegram import Bot
-from pandas_datareader._utils import RemoteDataError
+from stockutil.ticker import Ticker
+from stockutil.index import Index
 
-symbols = [["SPY",10,50],["QQQ",13,55,200],["RBLX",13,55,200]]
-ds = 'stooq'
-notifychat = -1001430794202
-adminchat = -1001250988031
-# symbols = [["SPY",10,50]]
+target_date = datetime.date.today()
 
 def help():
-    return "'sendxyh.py -c configpath'"
+    return "sendxyh.py -c configpath -d yyyymmdd"
 
-def cal_symbols_avg_stooq(symbol:str,avgs:list):
-    pass
-
-def cal_symbols_avg_yahoo(symbol:str,avgs:list):
-    start = datetime.date.today() - datetime.timedelta(days=365)
-    end = datetime.date.today()
-
-    try:
-        df = web.DataReader(symbol.upper(), 'yahoo',start=start,end=end)
-        message = f"{symbol.upper()}价格: {df['Close'][-1]:0.2f}({df['Low'][-1]:0.2f} - {df['High'][-1]:0.2f}) \n"
-        for avg in avgs:
-            if df.count()[0] > avg :
-                message += f"{avg} 周期均价：{df.tail(avg)['Adj Close'].mean():0.2f}\n"
-            else:
-                message += f"{avg} 周期均价因时长不足无法得出\n"
-        return f"{message}\n"
-    except RemoteDataError:
-        return f"{symbol}丢失了\n"
+def sendmsg(bot,chatid,msg,debug=True):
+    if debug:
+        print(f"{chatid}\n{msg}")
+    else:
+        bot.send_message(chatid,msg)
 
 if __name__ == '__main__':
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hc:", ["config="])
+        opts, args = getopt.getopt(sys.argv[1:], "hc:d:", ["config, datetime="])
     except getopt.GetoptError:
         print(help())
         sys.exit(2)
@@ -45,6 +28,14 @@ if __name__ == '__main__':
             sys.exit()
         elif opt in ("-c", "--config"):
             config.config_path = arg          
+        elif opt in ("-d", "--datetime"): 
+            try:
+                y,m,d = arg[:4],arg[-4:-2],arg[-2:]
+                target_date = datetime.date(int(y),int(m),int(d))
+            except Exception:
+                print("日期无法解读")
+                print(help())
+                sys.exit(2)
 
     config.config_file = os.path.join(config.config_path, "config.json")
     try:
@@ -52,20 +43,51 @@ if __name__ == '__main__':
     except FileNotFoundError:
         print(f"config.json not found.Generate a new configuration file in {config.config_file}")
         config.set_default()
-        sys.exit(2)
+        # sys.exit(2)
 
-    bot = Bot(token = CONFIG['Token'])
-    symbols = CONFIG['xyhticker']
-    notifychat = CONFIG['xyhchat']
-    adminchat = CONFIG['xyhlog']
+    ENV = config.ENV
+    print(f"sendxyh {target_date} ....")
 
-    message = "🌈🌈🌈当日天相🌈🌈🌈: \n"
+    if ENV.BOT_TOKEN == "":
+        sys.exit()
+
+    bot = Bot(token = ENV.BOT_TOKEN)
+    symbols = ENV.XYHTICKER
+    notifychat = ENV.XYHCHAT
+    adminchat = ENV.XYHLOG
+    debug = ENV.DEBUG
+    ds = ENV.XYHSOURCE
+    indexs = ENV.XYHINDEX
+   
+
+    notify_message = ""
+    admin_message = ""
+
     try:
+        # 计算指定ETF的均线价格与偏离度
         for symbol in symbols:
-            message += cal_symbols_avg_yahoo(symbol[0],symbol[1:])
-        message += "贡献者:毛票教的大朋友们"
-        bot.send_message(notifychat,message)
-        # bot.send_message(adminchat,f"向{notifychat}发送成功夕阳红:\n{message}")
+            t = Ticker(symbol[0],from_s="web",ds="stooq",endtime=target_date)
+            for ma in symbol[1:]:
+                t.cal_symbols_avg(int(ma))
+            notify_message += f"{t.get_today_price_msg()}{t.gen_xyh_msg()}\n"
+        
+        # 计算NDX和SPX成分股高于50MA的比例和交易量变化
+        for index in indexs:
+            i = Index(index,local_store=config.config_path)
+            i.get_tickers_list()
+            i.compare_avg_ma(ma=50,end_date=target_date)
+            notify_message += f"{i.gen_index_msg(target_date)}\n"
+            admin_message += i.err_msg
+
+        # 计算两市成交量与昨日的变化
+        for index in ['nasdaq','nyse']:
+            pass
+        
+        if notify_message:
+            notify_message = f"🌈🌈🌈{target_date}天相🌈🌈🌈: \n\n{notify_message}{ENV.CONTRIBUTORS}"
+            sendmsg(bot,notifychat,notify_message,debug)
+        if admin_message:
+            sendmsg(bot,adminchat,admin_message,debug)
     except Exception as err:
-        print(err)
-        bot.send_message(adminchat,f"今天完蛋了，什么都不知道，快去通知管理员，bot已经废物了出的问题是:\n{type(err)}:\n{err}")
+        sendmsg(bot,adminchat,f"今天完蛋了，什么都不知道，快去通知管理员，bot已经废物了，出的问题是:\n{type(err)}:\n{err}",debug)
+        raise err
